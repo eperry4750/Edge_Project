@@ -1,14 +1,16 @@
 The operating system is Windows 10
 64 bit  Anaconda Python 3.7 version is installed with the --full package
-The IDE is Spyder
+The main IDE is Spyder with PyCharm used less frequently.
 
+No further packaged need to be installed.
+
+The following will finish creating the needed enviroment.
 Open the Anaconda command prompt
-
 setup Openvino Open CV enviroment
 cd C:\Program Files (x86)\IntelSWTools\openvino_2019.3.379\bin
 setupvars.bat
 
-Download Models
+Download Models:
 The frozen_inference_graph.xml model was downlaoded 
 from http://download.tensorflow.org/models/object_detection/ssd_mobilenet_v2_coco_2018_03_29.tar.gz
 
@@ -21,6 +23,19 @@ Thhe naive model is the OpenCV 'haarcascade_frontalface_default.xml' model downl
 from https://towardsdatascience.com/face-detection-in-2-minutes-using-opencv-python-90f89d7c0f81
 
 The Faces 1999(Front) database was downloaded from http://www.vision.caltech.edu/html-files/archive.html
+The database consists of 450 Jpeg files.
+
+The faces were downladed and the image files were loaded into a list.
+This enabled me to pass the list to the Inference Engine and and only have to initialize the it once,
+which was done by modifying the perform_inference funtion.
+
+I hard coded the program so that I could load and test the 3 different models into the Infernece Engine in more timely manner.
+
+The fture command line instruction could look this.
+
+python app.py --model1_location --model2_location --model3_location --cpu --cpu_extension --confidence --database_location
+
+###############################################
 
 import cv2
 import numpy as np
@@ -47,7 +62,7 @@ def dataset():
     for image in os.listdir("faces_database/"):
             images.append(cv2.imread("faces_database/" + image, 1))
     return images, np.array(labels), labels_dict
-    
+
 def face_count(result, confidence, width, height):
     '''
     Draw bounding boxes onto the frame.
@@ -61,7 +76,7 @@ def face_count(result, confidence, width, height):
         if conf >= confidence:
             face_count += 1
     return face_count
-    
+
 '''
 The below function is carried over from the previous exercise.
 You just need to call it appropriately in `app.py` to preprocess
@@ -79,41 +94,42 @@ def preprocessing(input_image, height, width):
     image = image.transpose((2,0,1))
     image = image.reshape(1, 3, height, width)
     return image
-    
+
 def perform_inference(images, model):
-    # image = r"C:\Users\eperr\Anaconda3\Scripts3\Edge\Project\images\faces-1.jpg    
+ 
     '''
     Performs inference on an input image, given a model.
     '''
     # Create a Network for using the Inference Engine
     inference_network = Network()
     n, c, h, w = inference_network.load_model(model, CPU,  CPU_EXTENSION)    
-    # Read the input image
-    # image = cv2.imread(image)
-    ### TODO: Preprocess the input image
+
+
     count = 0
     for image in images:
-        preprocessed_image = preprocessing(image, h, w)        
+        preprocessed_image = preprocessing(image, h, w)
+        
         # Perform synchronous inference on the image
-        inference_network.sync_inference(preprocessed_image)   
+        inference_network.sync_inference(preprocessed_image)
+        
         # Obtain the output of the inference request
         result = inference_network.extract_output()           
-        ### TODO: Update the image to include detected bounding boxes
+
         count += face_count(result, CONFIDENCE, image.shape[1], image.shape[0])
-        # print("Found {0} faces!".format(face_count))
+
     return count
-    
+
 def naive_model(images):        
     # face detection image
     face_cascade = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
-    # image = cv2.imread('images/sitting-on-car.png',0)
-    # image = cv2.imread('images/white-face-black-face.jpg', 0)
+
     scale_factor = 1.3
     count = 0
     for image in images:
         face = face_cascade.detectMultiScale(image, scale_factor, 5)
         count += len(face)
-    return count       
+    return count
+       
 images, labels, labels_dict = dataset()
 
 models = [r"C:\Users\eperr\Anaconda3\Scripts3\Edge\Project\frozen_inference_graph.xml",
@@ -123,6 +139,7 @@ r"C:\Users\eperr\Anaconda3\Scripts3\Edge\Project\intel\face-detection-adas-0001\
 start_time = time.time()
 print("The haarcascade_frontalface_default.xml model found ", naive_model(images))
 print("--- in %s seconds ---" % (time.time() - start_time))
+
 print("The confidence level is 97.5% and the database has 450 faces")
 
 model_names = ["The Tensorflow frozen_inference_graph.xml model found ", "The Caffe fullfacedetection.xml model found ",
@@ -131,12 +148,5 @@ model_names = ["The Tensorflow frozen_inference_graph.xml model found ", "The Ca
 start_time = time.time()
 for index, model in enumerate(models):
     print(model_names[index], perform_inference(images, model))
-    print("--- in %s seconds ---" % (time.time() - start_time))
- 
-    
-
-
-
-
-
-        
+    print("--- in %s seconds ---" % (time.time() - start_time)) 
+       
